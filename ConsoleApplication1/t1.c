@@ -12,10 +12,10 @@
 
 #define INPUTFILE "can__268.mtx.rnd"
 #define OUTPUTFILE "ouf.txt"
-#define OUT_  "OUT_p1"
-#define MODE 6
-#define SHAKE_MODE 2
-#define SHAKE_K 0.35
+#define OUT_  "OUT_t1"
+#define MODE 12
+#define SHAKE_MODE 1
+#define SHAKE_K 0.25
 
 struct mnode{
 	int v;
@@ -53,6 +53,7 @@ int run_times = 0;
 int search_times = 0;
 int bug_t = 0;
 int t_begin, t_end;
+int imp_1=0, imp_2=0, imp_3=0;
 struct mnode edge[MAXV];
 
 struct cheak_error err;
@@ -87,6 +88,9 @@ void LocalSearch5(int* x, int* fx, int* VS, int k_max);
 void LocalSearch6(int* x, int* fx, int* VS, int k_max);
 void LocalSearch7(int* x, int* fx, int* VS, int k_max);
 void LocalSearch8(int* x, int* fx, int* VS, int k_max);            //2领域交换改2
+void LocalSearch9(int* x, int* fx, int* VS, int k_max);
+void LocalSearch10(int* x, int* fx, int* VS, int k_max);
+void LocalSearch11(int* x, int* fx, int* VS, int k_max);
 
 FILE* ouf;
 /////////////////////////////////////////////////////
@@ -154,6 +158,7 @@ void output(int*x,int *fx ,int* VS)
 	fprintf(ouf, "ITERATION %d TIMES\n", run_times);
 	fprintf(ouf, "SEARCH %d TIMES\n", search_times);
 	fprintf(ouf, "USE %f s\n", 1.0*(t_end - t_begin) / 1000);
+	fprintf(ouf, "improve1 = %d ,improve2 = %d , improve3 = %d\n", imp_1, imp_2, imp_3);
 	for (a = 1; a <= vertex_num; a++)
 	{
 		fprintf(ouf, "a=%-5dx[a]=%-8dfx[a]=%-8d  %-8d\n",a, x[a],fx[a], VS[a]);
@@ -257,7 +262,7 @@ int compare(int *VS1, int *VS2)
 	int a, maxc;
 	
 	maxc = 0;
-	for (a = 0; a < MAXV; a++)
+	for (a = 0; a < vertex_num; a++)
 	{
 		c1[a] = 0;
 		c2[a] = 0;
@@ -1003,6 +1008,7 @@ void LocalSearch6(int* x, int* fx, int* VS, int k_max)         //3领域
 					if (c == 2)
 					{
 						improvement = 1;
+						++imp_1;
 						assignment_array(loc_x, x, vertex_num);
 						assignment_array(loc_fx, fx, vertex_num);
 						assignment_array(loc_VS, VS, vertex_num);
@@ -1032,6 +1038,7 @@ void LocalSearch6(int* x, int* fx, int* VS, int k_max)         //3领域
 							if (c == 2)
 							{
 								improvement = 1;
+								++imp_2;
 								assignment_array(loc_x, x, vertex_num);
 								assignment_array(loc_fx, fx, vertex_num);
 								assignment_array(loc_VS, VS, vertex_num);
@@ -1058,6 +1065,7 @@ void LocalSearch6(int* x, int* fx, int* VS, int k_max)         //3领域
 								if (c == 2)
 								{
 									improvement = 1;
+									++imp_3;
 									assignment_array(loc_x, x, vertex_num);
 									assignment_array(loc_fx, fx, vertex_num);
 									assignment_array(loc_VS, VS, vertex_num);
@@ -1302,6 +1310,575 @@ void LocalSearch8(int* x, int* fx, int* VS, int k_max)            //2临域交换改2
 	return;
 }
 
+
+void LocalSearch9(int* x, int* fx, int* VS, int k_max)         //3领域,n临域采用insert方法
+{
+	int improvement = 1;
+	int improvement_glo = 0;
+	int a, b, c, d;
+	int m1, m2;
+	struct mnode *p;
+	assignment_array(x, loc_x, vertex_num);
+	assignment_array(fx, loc_fx, vertex_num);
+	assignment_array(VS, loc_VS, vertex_num);
+	do
+	{
+
+		while (improvement)
+		{
+			improvement = 0;
+
+			for (a = 1; a <= vertex_num; a++)
+			{
+				m1 = 9999;  m2 = 9999;
+				p = edge[x[a]].next;
+				while (p)
+				{
+					if (fx[p->v] < m1)
+					{
+						m2 = m1;
+						m1 = fx[p->v];
+					}
+					else
+					{
+						if (fx[p->v] < m2)
+						{
+							m2 = fx[p->v];
+						}
+					}
+					p = p->next;
+				}
+
+			
+
+				if (m1 == vertex_num) b = vertex_num;
+				else
+					b = m1 + 1 + rand() % (vertex_num - m1);
+
+				if (b > vertex_num)b = vertex_num;
+				if (a != b)
+				{
+					++search_times;
+
+					assignment_array(x, loc_x, vertex_num);
+					assignment_array(fx, loc_fx, vertex_num);
+					assignment_array(VS, loc_VS, vertex_num);
+					insert(loc_x, loc_fx, loc_VS, a, b);
+					//swap(loc_x, loc_fx, loc_VS, a, b);
+					c = compare(VS, loc_VS);
+					if (c == 2)
+					{
+						improvement = 1;
+						assignment_array(loc_x, x, vertex_num);
+						assignment_array(loc_fx, fx, vertex_num);
+						assignment_array(loc_VS, VS, vertex_num);
+						++imp_1;
+					}
+				}
+
+			}
+		}
+		if (!improvement)
+		{
+			d = compare(loc_VS, glo_VS);
+			if (d != 2)
+			{
+				for (a = 1; a <= vertex_num; a++)
+				{
+					for (b = 1; b <= vertex_num; b++)
+					{
+						if (a != b)
+						{
+							++search_times;
+							assignment_array(x, loc_x, vertex_num);
+							assignment_array(fx, loc_fx, vertex_num);
+							assignment_array(VS, loc_VS, vertex_num);
+							//	insert(loc_x, loc_fx, loc_VS, a, b);
+							swap(loc_x, loc_fx, loc_VS, a, b);
+							c = compare(VS, loc_VS);
+							if (c == 2)
+							{
+								improvement = 1;
+								assignment_array(loc_x, x, vertex_num);
+								assignment_array(loc_fx, fx, vertex_num);
+								assignment_array(loc_VS, VS, vertex_num);
+								++imp_2;
+							}
+
+						}
+					}
+				}
+				if (!improvement)
+				{
+					for (a = 1; a <= vertex_num; a++)
+					{
+						for (b = 1; b <= vertex_num; b++)
+						{
+							if (a != b)
+							{
+								++search_times;
+								assignment_array(x, loc_x, vertex_num);
+								assignment_array(fx, loc_fx, vertex_num);
+								assignment_array(VS, loc_VS, vertex_num);
+								insert(loc_x, loc_fx, loc_VS, a, b);
+								//  swap(loc_x, loc_fx, loc_VS, a, b);
+								c = compare(VS, loc_VS);
+								if (c == 2)
+								{
+									improvement = 1;
+									assignment_array(loc_x, x, vertex_num);
+									assignment_array(loc_fx, fx, vertex_num);
+									assignment_array(loc_VS, VS, vertex_num);
+									++imp_3;
+								}
+
+							}
+						}
+					}
+				}
+			}
+		}
+
+
+	} while (improvement);
+	return;
+}
+
+
+void LocalSearch10(int* x, int* fx, int* VS, int k_max)         //3领域，n^2临域先插入后交换，优化实现
+{
+	int improvement = 1;
+	int improvement_glo = 0;
+	int a, b, c, d;
+	int m1, m2;
+	struct mnode *p;
+	assignment_array(x, loc_x, vertex_num);
+	assignment_array(fx, loc_fx, vertex_num);
+	assignment_array(VS, loc_VS, vertex_num);
+	do
+	{
+
+		while (improvement)
+		{
+			improvement = 0;
+
+			for (a = 1; a <= vertex_num; a++)
+			{
+				m1 = 9999;  m2 = 9999;
+				p = edge[x[a]].next;
+				while (p)
+				{
+					if (fx[p->v] < m1)
+					{
+						m2 = m1;
+						m1 = fx[p->v];
+					}
+					else
+					{
+						if (fx[p->v] < m2)
+						{
+							m2 = fx[p->v];
+						}
+					}
+					p = p->next;
+				}
+
+				if (m1 == vertex_num) b = vertex_num;
+				else
+					b = m1 + 1 + rand() % (vertex_num - m1);
+
+				if (b > vertex_num)b = vertex_num;
+				if (a != b)
+				{
+					++search_times;
+					//	assignment_array(x, loc_x, vertex_num);
+					//	assignment_array(fx, loc_fx, vertex_num);
+					assignment_array(VS, loc_VS, vertex_num);
+					//	insert(loc_x, loc_fx, loc_VS, a, b);
+					swap(loc_x, loc_fx, loc_VS, a, b);
+					c = compare(VS, loc_VS);
+					if (c == 2)
+					{
+						improvement = 1;
+
+						++imp_1;
+						assignment_array(loc_x, x, vertex_num);
+						assignment_array(loc_fx, fx, vertex_num);
+						assignment_array(loc_VS, VS, vertex_num);
+					}
+					else
+					{
+						d = loc_x[a];
+						loc_x[a] = loc_x[b];
+						loc_x[b] = d;
+						loc_fx[loc_x[a]] = a;
+						loc_fx[loc_x[b]] = b;
+					}
+
+				}
+
+			}
+		}
+		if (!improvement)
+		{
+			d = compare(loc_VS, glo_VS);
+			if (d != 2)
+			{
+				for (a = 1; a <= vertex_num; a++)
+				{
+					for (b = 1; b <= vertex_num; b++)
+					{
+						if (a != b)
+						{
+							++search_times;
+							assignment_array(x, loc_x, vertex_num);
+							assignment_array(fx, loc_fx, vertex_num);
+							assignment_array(VS, loc_VS, vertex_num);
+							insert(loc_x, loc_fx, loc_VS, a, b);
+							//swap(loc_x, loc_fx, loc_VS, a, b);
+							c = compare(VS, loc_VS);
+							if (c == 2)
+							{
+								improvement = 1;
+								++imp_2;
+								assignment_array(loc_x, x, vertex_num);
+								assignment_array(loc_fx, fx, vertex_num);
+								assignment_array(loc_VS, VS, vertex_num);
+							}
+
+						}
+					}
+				}
+				if (!improvement)
+				{
+					for (a = 1; a <= vertex_num; a++)
+					{
+						for (b = 1; b <= vertex_num; b++)
+						{
+							if (a != b)
+							{
+								++search_times;
+								assignment_array(x, loc_x, vertex_num);
+								assignment_array(fx, loc_fx, vertex_num);
+								assignment_array(VS, loc_VS, vertex_num);
+								//insert(loc_x, loc_fx, loc_VS, a, b);
+								swap(loc_x, loc_fx, loc_VS, a, b);
+								c = compare(VS, loc_VS);
+								if (c == 2)
+								{
+									improvement = 1;
+									++imp_3;
+									assignment_array(loc_x, x, vertex_num);
+									assignment_array(loc_fx, fx, vertex_num);
+									assignment_array(loc_VS, VS, vertex_num);
+								}
+
+							}
+						}
+					}
+				}
+			}
+		}
+
+
+	} while (improvement);
+	return;
+}
+
+void LocalSearch11(int* x, int* fx, int* VS, int k_max)         //3领域，优化赋值
+{
+	int improvement = 1;
+	int improvement_glo = 0;
+	int a, b, c, d, e;
+	int m1, m2;
+	struct mnode *p;
+	assignment_array(x, loc_x, vertex_num);
+	assignment_array(fx, loc_fx, vertex_num);
+	assignment_array(VS, loc_VS, vertex_num);
+	do
+	{
+
+		while (improvement)
+		{
+			improvement = 0;
+
+			for (a = 1; a <= vertex_num; a++)
+			{
+				m1 = 9999;  m2 = 9999;
+				p = edge[x[a]].next;
+				while (p)
+				{
+					if (fx[p->v] < m1)
+					{
+						m2 = m1;
+						m1 = fx[p->v];
+					}
+					else
+					{
+						if (fx[p->v] < m2)
+						{
+							m2 = fx[p->v];
+						}
+					}
+					p = p->next;
+				}
+
+				if (m1 == vertex_num) b = vertex_num;
+				else
+					b = m1 + 1 + rand() % (vertex_num - m1);
+
+				if (b > vertex_num)b = vertex_num;
+				if (a != b)
+				{
+					++search_times;
+					//	assignment_array(x, loc_x, vertex_num);
+					//	assignment_array(fx, loc_fx, vertex_num);
+					assignment_array(VS, loc_VS, vertex_num);
+					//	insert(loc_x, loc_fx, loc_VS, a, b);
+					swap(loc_x, loc_fx, loc_VS, a, b);
+					c = compare(VS, loc_VS);
+					if (c == 2)
+					{
+						improvement = 1;
+
+						++imp_1;
+						assignment_array(loc_x, x, vertex_num);
+						assignment_array(loc_fx, fx, vertex_num);
+						assignment_array(loc_VS, VS, vertex_num);
+					}
+					else
+					{
+						d = loc_x[a];
+						loc_x[a] = loc_x[b];
+						loc_x[b] = d;
+						loc_fx[loc_x[a]] = a;
+						loc_fx[loc_x[b]] = b;
+					}
+
+				}
+
+			}
+		}
+		if (!improvement)
+		{
+			d = compare(loc_VS, glo_VS);
+			if (d != 2)
+			{
+				for (a = 1; a <= vertex_num; a++)
+				{
+					for (b = 1; b <= vertex_num; b++)
+					{
+						if (a != b)
+						{
+							++search_times;
+						//	assignment_array(x, loc_x, vertex_num);  
+						//	assignment_array(fx, loc_fx, vertex_num);
+							assignment_array(VS, loc_VS, vertex_num);
+						//	insert(loc_x, loc_fx, loc_VS, a, b); 
+							swap(loc_x, loc_fx, loc_VS, a, b);
+							c = compare(VS, loc_VS); 
+							if (c == 2) 
+							{ 
+								improvement = 1;   
+								++imp_2;
+								assignment_array(loc_x, x, vertex_num);
+								assignment_array(loc_fx, fx, vertex_num); 
+								assignment_array(loc_VS, VS, vertex_num); 
+							}
+							else 
+							{
+								e = loc_x[a]; 
+								loc_x[a] = loc_x[b];
+								loc_x[b] = e;   
+								loc_fx[loc_x[a]] = a;
+								loc_fx[loc_x[b]] = b;
+							}  
+						}
+					} 
+				}
+				if (!improvement)  
+				{
+					for (a = 1; a <= vertex_num; a++) 
+					{ 
+						for (b = 1; b <= vertex_num; b++)
+						{ 
+							if (a != b) 
+							{ 
+								++search_times;
+								assignment_array(x, loc_x, vertex_num); 
+								assignment_array(fx, loc_fx, vertex_num); 
+								assignment_array(VS, loc_VS, vertex_num);
+								insert(loc_x, loc_fx, loc_VS, a, b);
+							//	swap(loc_x, loc_fx, loc_VS, a, b);  
+								c = compare(VS, loc_VS); 
+								if (c == 2)
+								{ 
+									improvement = 1;   
+									++imp_3;
+									assignment_array(loc_x, x, vertex_num);
+									assignment_array(loc_fx, fx, vertex_num);
+									assignment_array(loc_VS, VS, vertex_num);
+								}
+
+							}
+						}
+					}
+				}
+			}
+		} 
+
+
+	} while (improvement);
+	return;
+}
+
+
+void LocalSearch12(int* x, int* fx, int* VS, int k_max)         //3领域，优化赋值 ,领域变换不考虑全局解
+{
+	int improvement = 1;
+	int improvement_glo = 0;
+	int a, b, c, d, e;
+	int m1, m2;
+	struct mnode *p;
+	assignment_array(x, loc_x, vertex_num);
+	assignment_array(fx, loc_fx, vertex_num);
+	assignment_array(VS, loc_VS, vertex_num);
+	do
+	{
+
+		while (improvement)
+		{
+			improvement = 0;
+
+			for (a = 1; a <= vertex_num; a++)
+			{
+				m1 = 9999;  m2 = 9999;
+				p = edge[x[a]].next;
+				while (p)
+				{
+					if (fx[p->v] < m1)
+					{
+						m2 = m1;
+						m1 = fx[p->v];
+					}
+					else
+					{
+						if (fx[p->v] < m2)
+						{
+							m2 = fx[p->v];
+						}
+					}
+					p = p->next;
+				}
+
+				if (m1 == vertex_num) b = vertex_num;
+				else
+					b = m1 + 1 + rand() % (vertex_num - m1);
+
+				if (b > vertex_num)b = vertex_num;
+				if (a != b)
+				{
+					++search_times;
+					//	assignment_array(x, loc_x, vertex_num);
+					//	assignment_array(fx, loc_fx, vertex_num);
+					assignment_array(VS, loc_VS, vertex_num);
+					//	insert(loc_x, loc_fx, loc_VS, a, b);
+					swap(loc_x, loc_fx, loc_VS, a, b);
+					c = compare(VS, loc_VS);
+					if (c == 2)
+					{
+						improvement = 1;
+
+						++imp_1;
+						assignment_array(loc_x, x, vertex_num);
+						assignment_array(loc_fx, fx, vertex_num);
+						assignment_array(loc_VS, VS, vertex_num);
+					}
+					else
+					{
+						d = loc_x[a];
+						loc_x[a] = loc_x[b];
+						loc_x[b] = d;
+						loc_fx[loc_x[a]] = a;
+						loc_fx[loc_x[b]] = b;
+					}
+
+				}
+
+			}
+		}
+		if (!improvement)
+		{
+			for (a = 1; a <= vertex_num; a++)
+			{
+				for (b = 1; b <= vertex_num; b++)
+				{
+					if (a != b)
+					{
+						++search_times;
+						//	assignment_array(x, loc_x, vertex_num);  
+						//	assignment_array(fx, loc_fx, vertex_num);
+						assignment_array(VS, loc_VS, vertex_num);
+						//	insert(loc_x, loc_fx, loc_VS, a, b); 
+						swap(loc_x, loc_fx, loc_VS, a, b);
+						c = compare(VS, loc_VS);
+						if (c == 2)
+						{
+							improvement = 1;
+							++imp_2;
+							assignment_array(loc_x, x, vertex_num);
+							assignment_array(loc_fx, fx, vertex_num);
+							assignment_array(loc_VS, VS, vertex_num);
+						}
+						else
+						{
+							e = loc_x[a];
+							loc_x[a] = loc_x[b];
+							loc_x[b] = e;
+							loc_fx[loc_x[a]] = a;
+							loc_fx[loc_x[b]] = b;
+						}
+					}
+				}
+			}
+			if (!improvement)
+			{
+				for (a = 1; a <= vertex_num; a++)
+				{
+					for (b = 1; b <= vertex_num; b++)
+					{
+						if (a != b)
+						{
+							++search_times;
+							assignment_array(x, loc_x, vertex_num);
+							assignment_array(fx, loc_fx, vertex_num);
+							assignment_array(VS, loc_VS, vertex_num);
+							insert(loc_x, loc_fx, loc_VS, a, b);
+							//	swap(loc_x, loc_fx, loc_VS, a, b);  
+							c = compare(VS, loc_VS);
+							if (c == 2)
+							{
+								improvement = 1;
+								++imp_3;
+								assignment_array(loc_x, x, vertex_num);
+								assignment_array(loc_fx, fx, vertex_num);
+								assignment_array(loc_VS, VS, vertex_num);
+							}
+
+						}
+					}
+				}
+			}
+			
+		}
+
+
+	} while (improvement);
+	return;
+}
+
+
+
 void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 {
 	int a;
@@ -1374,6 +1951,26 @@ void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 		{
 				  LocalSearch8(now_x, now_fx, now_VS, 0);
 				  break;
+		}
+		case 9:
+		{
+				  LocalSearch9(now_x, now_fx, now_VS, 0);
+				  break;
+		}
+		case 10:
+		{
+				  LocalSearch10(now_x, now_fx, now_VS, 0);
+				  break;
+		}
+		case 11:
+		{
+				   LocalSearch11(now_x, now_fx, now_VS, 0);
+				   break;
+		}
+		case 12:
+		{
+				   LocalSearch12(now_x, now_fx, now_VS, 0);
+				   break;
 		}
 		
 		default:
