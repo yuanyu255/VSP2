@@ -12,8 +12,8 @@
 
 #define INPUTFILE "can__268.mtx.rnd"
 #define OUTPUTFILE "ouf.txt"
-#define OUT_  "OUT_t1"
-#define MODE 12
+#define OUT_  "OUT_v1"
+#define MODE 14
 #define SHAKE_MODE 1
 #define SHAKE_K 0.25
 
@@ -54,6 +54,8 @@ int search_times = 0;
 int bug_t = 0;
 int t_begin, t_end;
 int imp_1=0, imp_2=0, imp_3=0;
+int ans_now = 0;
+int glo_imp = 0;
 struct mnode edge[MAXV];
 
 struct cheak_error err;
@@ -91,6 +93,7 @@ void LocalSearch8(int* x, int* fx, int* VS, int k_max);            //2¡Ï”ÚΩªªª∏ƒ
 void LocalSearch9(int* x, int* fx, int* VS, int k_max);
 void LocalSearch10(int* x, int* fx, int* VS, int k_max);
 void LocalSearch11(int* x, int* fx, int* VS, int k_max);
+void LocalSearch12(int* x, int* fx, int* VS, int k_max);
 
 FILE* ouf;
 /////////////////////////////////////////////////////
@@ -260,7 +263,7 @@ void VS_updata(int* VS, int* x,int *fx, int start, int end)  //VS:‘≠≥…±æ£¨xµ±«∞Ω
 int compare(int *VS1, int *VS2)
 {
 	int a, maxc;
-	
+	ans_now = 0;
 	maxc = 0;
 	for (a = 0; a < vertex_num; a++)
 	{
@@ -272,8 +275,12 @@ int compare(int *VS1, int *VS2)
 		c1[VS1[a]]++;
  		c2[VS2[a]]++;
 		if (VS1[a] > maxc) maxc = VS1[a];
+		if (VS1[a]>ans_now) ans_now = VS1[a];
 		if (VS2[a] > maxc) maxc = VS2[a];
 	}
+
+
+
 	for (a = maxc; a >0; a--)
 	{
 		if (c1[a] > c2[a]) return 2;          //VS2 better
@@ -1882,7 +1889,8 @@ void LocalSearch12(int* x, int* fx, int* VS, int k_max)         //3¡Ï”Ú£¨”≈ªØ∏≥÷
 void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 {
 	int a;
-
+	float t1 = 0, t2 = 0;
+	int shake_mode=SHAKE_MODE;
 
 	assignment_array(x, glo_x,vertex_num);
 	assignment_array(fx, glo_fx, vertex_num);
@@ -1893,13 +1901,14 @@ void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 	assignment_array(VS, now_VS, vertex_num);
 
 	t_begin = clock(); 
+	t_end = clock();
 	do
 	{
 		assignment_array(glo_x, now_x, vertex_num);
 		assignment_array(glo_fx, now_fx, vertex_num);
 		assignment_array(glo_VS, now_VS, vertex_num);
 
-		if (SHAKE_MODE == 1)
+		if (shake_mode == 1)
 		{
 			shake(now_x, now_fx, now_VS, shakek);
 		}
@@ -1972,6 +1981,35 @@ void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 				   LocalSearch12(now_x, now_fx, now_VS, 0);
 				   break;
 		}
+		case 13:
+		{
+				   if (1.0*(t_end - t_begin) / 1000 < 0.3*tmax)
+				   {
+					   LocalSearch11(now_x, now_fx, now_VS, 0);
+				   }
+				   else
+				   {
+					   LocalSearch12(now_x, now_fx, now_VS, 0);
+				   }
+				   break;
+		}
+		case 14:
+		{
+				   if (1.0*(t_end - t_begin) / 1000 < 0.3*tmax)
+				   {
+					   shakek = (int)(0.25*vertex_num);
+					   shake_mode = 1;
+					   LocalSearch11(now_x, now_fx, now_VS, 0);
+				   }
+				   else
+				   {
+					   shakek = (int)(0.4*vertex_num);
+					   shake_mode = 2;
+					   LocalSearch11(now_x, now_fx, now_VS, 0);
+				   }
+				
+				   break;
+		}
 		
 		default:
 			break;
@@ -1990,9 +2028,18 @@ void GVNS(int* x, int *fx, int *VS, int shakek, int tmax)
 			assignment_array(now_x, glo_x, vertex_num);
 			assignment_array(now_fx, glo_fx, vertex_num);
 			assignment_array(now_VS, glo_VS, vertex_num);
+			++glo_imp;
 		}
 		t_end = clock();
-	} while ((1.0*(t_end - t_begin) / 1000 < tmax) && (run_times < MAXRUNTIMES));
+		t1 = (float)(1.0*(t_end - t_begin) / 1000);
+
+		if (t1 > t2)
+		{
+			printf("t=%f ,ans= %d ,glo_imp= %d\n", t1, ans_now,glo_imp);
+			t2 += 10;
+		}
+	    
+	} while ((t1 < tmax) && (run_times < MAXRUNTIMES));
 
 
 	assignment_array(glo_x, x, vertex_num);
